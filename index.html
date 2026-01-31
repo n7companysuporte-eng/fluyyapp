@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fluy</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+:root{
+  --primary:#7B5CFF;
+  --bg:#0e0e11;
+  --card:#16161c;
+  --text:#fff;
+  --muted:#9aa0a6;
+  --danger:#ff5c5c;
+}
+*{box-sizing:border-box;font-family:Inter,system-ui}
+body{margin:0;background:var(--bg);color:var(--text)}
+.hidden{display:none}
+
+header{text-align:center;padding:20px}
+.logo{
+  font-size:32px;
+  font-weight:800;
+  animation:pulse 2s infinite;
+}
+@keyframes pulse{
+  0%{transform:scale(1)}
+  50%{transform:scale(1.06)}
+  100%{transform:scale(1)}
+}
+
+.container{padding:16px}
+.card{
+  background:var(--card);
+  border-radius:16px;
+  padding:16px;
+  margin-bottom:16px;
+}
+
+input,select{
+  width:100%;
+  padding:12px;
+  border-radius:10px;
+  border:none;
+  margin-top:8px;
+}
+
+button{
+  width:100%;
+  padding:12px;
+  border-radius:12px;
+  border:none;
+  background:var(--primary);
+  color:#fff;
+  font-weight:600;
+  margin-top:10px;
+}
+
+.link{
+  text-align:center;
+  margin-top:10px;
+  color:var(--muted);
+  cursor:pointer;
+}
+
+.list-item{
+  display:flex;
+  justify-content:space-between;
+  font-size:14px;
+  margin-top:6px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div id="login" class="container">
+  <div class="card">
+    <h2>Entrar no Fluy</h2>
+    <input id="loginUser" placeholder="Usuário">
+    <input id="loginPass" type="password" placeholder="Senha">
+    <button onclick="login()">Entrar</button>
+    <div class="link" onclick="showReset()">Esqueci minha senha</div>
+  </div>
+</div>
+
+<!-- RESET SENHA -->
+<div id="reset" class="container hidden">
+  <div class="card">
+    <h2>Redefinir senha</h2>
+    <input id="resetUser" placeholder="Usuário">
+    <input id="newPass" type="password" placeholder="Nova senha">
+    <input id="confirmPass" type="password" placeholder="Confirmar senha">
+    <button onclick="resetPassword()">Salvar nova senha</button>
+    <div class="link" onclick="backLogin()">Voltar para login</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+
+<header>
+  <div class="logo">⚡ Fluy</div>
+  <select id="month" onchange="render()"></select>
+</header>
+
+<div class="container">
+
+<div class="card">
+  <h3>Saldo disponível</h3>
+  <h1 id="saldo">R$ 0,00</h1>
+</div>
+
+<div class="card">
+  <h3>Adicionar Receita</h3>
+  <input id="rValor" type="number" placeholder="Valor">
+  <select id="rCat">
+    <option>Salário</option>
+    <option>Renda Extra</option>
+    <option>Freelance</option>
+    <option>Outros</option>
+  </select>
+  <button onclick="addReceita()">Adicionar Receita</button>
+</div>
+
+<div class="card">
+  <h3>Adicionar Despesa</h3>
+  <input id="dValor" type="number" placeholder="Valor">
+  <select id="dCat">
+    <option>Moradia</option>
+    <option>Alimentação</option>
+    <option>Transporte</option>
+    <option>Lazer</option>
+    <option>Saúde</option>
+    <option>Educação</option>
+    <option>Outros</option>
+  </select>
+  <button onclick="addDespesa()">Adicionar Despesa</button>
+</div>
+
+<div class="card">
+  <h3>Despesas por categoria</h3>
+  <div id="resumo"></div>
+</div>
+
+</div>
+</div>
+
+<script>
+/* LOGIN */
+const showReset=()=>{
+  login.classList.add("hidden")
+  reset.classList.remove("hidden")
+}
+const backLogin=()=>{
+  reset.classList.add("hidden")
+  login.classList.remove("hidden")
+}
+
+const login=()=>{
+  const u=loginUser.value
+  const p=loginPass.value
+  const saved=JSON.parse(localStorage.getItem("authUser"))
+  if(!saved){
+    localStorage.setItem("authUser",JSON.stringify({u,p}))
+    localStorage.setItem("auth","1")
+    location.reload()
+  }else if(saved.u===u && saved.p===p){
+    localStorage.setItem("auth","1")
+    location.reload()
+  }else{
+    alert("Usuário ou senha inválidos")
+  }
+}
+
+const resetPassword=()=>{
+  if(newPass.value!==confirmPass.value){
+    alert("Senhas não conferem")
+    return
+  }
+  localStorage.setItem("authUser",JSON.stringify({
+    u:resetUser.value,
+    p:newPass.value
+  }))
+  alert("Senha redefinida com sucesso")
+  backLogin()
+}
+
+if(localStorage.getItem("auth")){
+  login.classList.add("hidden")
+  app.classList.remove("hidden")
+}
+
+/* APP */
+const data=JSON.parse(localStorage.getItem("fluy"))||[]
+const save=()=>localStorage.setItem("fluy",JSON.stringify(data))
+
+const monthSelect=document.getElementById("month")
+const now=new Date()
+for(let i=0;i<12;i++){
+  const d=new Date(now.getFullYear(),i)
+  const opt=document.createElement("option")
+  opt.value=i
+  opt.text=d.toLocaleString("pt-BR",{month:"long"})
+  if(i===now.getMonth()) opt.selected=true
+  monthSelect.appendChild(opt)
+}
+
+const addReceita=()=>{
+  data.push({tipo:"r",valor:+rValor.value,cat:rCat.value,date:new Date()})
+  save();render()
+}
+const addDespesa=()=>{
+  data.push({tipo:"d",valor:+dValor.value,cat:dCat.value,date:new Date()})
+  save();render()
+}
+
+const render=()=>{
+  const m=+month.value
+  let saldo=0,res={}
+  data.filter(i=>new Date(i.date).getMonth()===m).forEach(i=>{
+    if(i.tipo==="r") saldo+=i.valor
+    else{
+      saldo-=i.valor
+      res[i.cat]=(res[i.cat]||0)+i.valor
+    }
+  })
+  saldo.innerText="R$ "+saldo.toFixed(2)
+  resumo.innerHTML=""
+  for(let c in res){
+    resumo.innerHTML+=`<div class="list-item">${c}<strong>R$ ${res[c].toFixed(2)}</strong></div>`
+  }
+}
+render()
+</script>
+
+</body>
+</html>
